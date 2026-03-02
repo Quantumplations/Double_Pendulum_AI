@@ -95,7 +95,7 @@ def main():
     
     # Arbitrary initial conditions: [theta1, theta2, omega1, omega2]
     # e.g., releasing from almost perfectly horizontal
-    y0 = [np.pi/2, np.pi/2, 0.0, 0.0]
+    y0 = [np.pi/2, np.pi/np.sqrt(5), -1, 1/2]
     
     # Simulation time (0 to 20 seconds)
     t_span = (0, 20)
@@ -115,7 +115,7 @@ def main():
         dE_max = np.max(np.abs(E - E[0]))
         print(f"Maximum energy drift (energy conservation error): {dE_max:.5e} J")
         
-        # Calculate Cartesian coordinates for plotting
+        # Calculate Cartesian coordinates for plotting (used in animation)
         theta1, theta2 = sol.y[0], sol.y[1]
         x1 = dp.l1 * np.sin(theta1)
         y1 = -dp.l1 * np.cos(theta1)
@@ -123,19 +123,40 @@ def main():
         x2 = x1 + dp.l2 * np.sin(theta2)
         y2 = y1 - dp.l2 * np.cos(theta2)
         
-        # Plot the static trajectory
-        plt.figure(figsize=(6, 6))
-        plt.title('Double Pendulum Trajectory')
-        plt.plot(x1, y1, label='Bob 1 (m1)', alpha=0.5, color='blue')
-        plt.plot(x2, y2, label='Bob 2 (m2)', alpha=0.7, color='red')
-        plt.plot(0, 0, 'ko', markersize=6, label='Pivot')
-        plt.xlabel('x (m)')
-        plt.ylabel('y (m)')
-        plt.legend()
-        plt.axis('equal')
-        plt.grid(True)
-        plt.tight_layout()
-        print("Close the plot window to finish script.")
+        # --- Animation Setup ---
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.add_subplot(111, autoscale_on=False, xlim=(-(dp.l1+dp.l2)*1.1, (dp.l1+dp.l2)*1.1), ylim=(-(dp.l1+dp.l2)*1.1, (dp.l1+dp.l2)*1.1))
+        ax.set_aspect('equal')
+        ax.grid()
+        ax.set_title('Double Pendulum Dynamics')
+        ax.set_xlabel('x (m)')
+        ax.set_ylabel('y (m)')
+
+        line, = ax.plot([], [], 'o-', lw=2, color='black', markersize=6)
+        trace, = ax.plot([], [], '-', lw=1, color='blue', alpha=0.5)
+        
+        history_x, history_y = [], []
+
+        def init():
+            line.set_data([], [])
+            trace.set_data([], [])
+            return line, trace
+
+        def animate(i):
+            thisx = [0, x1[i], x2[i]]
+            thisy = [0, y1[i], y2[i]]
+            
+            history_x.append(x2[i])
+            history_y.append(y2[i])
+            
+            line.set_data(thisx, thisy)
+            trace.set_data(history_x, history_y)
+            return line, trace
+
+        print("Generating animation. Close the window to exit.")
+        # interval is in ms. fps=60 means 1000/60 ~ 16.6ms
+        ani = animation.FuncAnimation(fig, animate, frames=len(sol.t),
+                                      interval=1000/fps, blit=True, init_func=init, repeat=False)
         plt.show()
     else:
         print(f"Integration failed: {sol.message}")
