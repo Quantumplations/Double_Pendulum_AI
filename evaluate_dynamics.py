@@ -8,20 +8,23 @@ from train_dynamics import DynamicsMLP, DT
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main():
-    print("Loading Trained Model...")
+    print("Loading Trained Model & Scalers...")
     model = DynamicsMLP().to(device)
     try:
         model.load_state_dict(torch.load("pendulum_mlp.pth", map_location=device, weights_only=True))
+        scalers = torch.load("scalers.pt", map_location=device, weights_only=True)
+        x_mean, x_std = scalers['x_mean'].to(device), scalers['x_std'].to(device)
+        y_mean, y_std = scalers['y_mean'].to(device), scalers['y_std'].to(device)
     except FileNotFoundError:
-        print("Error: pendulum_mlp.pth not found. Run train_dynamics.py first.")
+        print("Error: pendulum_mlp.pth or scalers.pt not found. Run train_dynamics.py first.")
         return
     model.eval()
 
     # Define a test scenario: parameters the model may or may not have seen exactly
-    m1, m2, l1, l2 = 1.0, 1.0, 1.0, 1.0
+    m1, m2, l1, l2 = 0.6, 0.33, 0.46, 1.1
     
     # Unseen initial conditions: [theta1, theta2, omega1, omega2] 
-    y0 = [np.pi/2, np.pi/4, 0.0, 0.0]
+    y0 = [np.pi/5, -np.pi/7, -3.1, 2.4]
     
     # Time parameters for rollout
     trajectory_seconds = 5.0
@@ -43,18 +46,22 @@ def main():
     ai_trajectory = np.zeros((steps, 4))
     ai_trajectory[0] = y0
     
-    current_state = y0
+    current_state = np.array(y0)
     with torch.no_grad():
         for t in range(1, steps):
             # Input features: [m1, m2, l1, l2, theta1, theta2, omega1, omega2]
-            features = [m1, m2, l1, l2] + list(current_state)
-            x_tensor = torch.tensor(features, dtype=torch.float32).unsqueeze(0).to(device)
+            features = torch.tensor([m1, m2, l1, l2] + current_state.tolist(), dtype=torch.float32).to(device)
+            features_norm = (features - x_mean) / x_std
             
-            # Predict next step
-            next_state_tensor = model(x_tensor)
-            next_state = next_state_tensor.squeeze(0).cpu().numpy()
+            # Predict residual (delta)
+            residual_norm = model(features_norm.unsqueeze(0)).squeeze(0)
+            residual = (residual_norm * y_std) + y_mean
+            residual = residual.cpu().numpy()
             
-            # Normalize predicted angles (prevent predicting continuous wrapping)
+            # Compute next state
+            next_state = current_state + residual
+            
+            # Normalize predicted angles
             next_state[0] = (next_state[0] + np.pi) % (2 * np.pi) - np.pi
             next_state[1] = (next_state[1] + np.pi) % (2 * np.pi) - np.pi
             
@@ -72,7 +79,7 @@ def main():
     axs[0].set_ylabel('Theta 1 (rad)')
     axs[0].legend()
     axs[0].grid(True)
-    axs[0].set_title(f'Double Pendulum Autoregressive AI Rollout vs Physics over {trajectory_seconds}s')
+    axs[0].set_title(f'Enhanced ResNet Rollout vs Physics over {trajectory_seconds}s')
     
     # Theta 2
     axs[1].plot(t_eval, true_trajectory[:, 1], 'g-', label='True Theta 2 (Physics)')
