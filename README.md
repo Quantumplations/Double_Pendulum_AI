@@ -1,27 +1,15 @@
 # Double Pendulum AI
 
-This project explores the famously chaotic dynamics of a double pendulum system and utilizes Machine Learning (specifically, a PyTorch ResNet) to predict its motion.
+This project explores the famously chaotic dynamics of a double pendulum system using a PyTorch ResNet to predict its motion.
 
 ## The Double Pendulum System
 
 The double pendulum consists of two pendulums, with one attached to the end of the other. The state of the system is fully described by 8 parameters: the masses ($m_1, m_2$), the rod lengths ($l_1, l_2$), the angles from the vertical ($\theta_1, \theta_2$), and the angular velocities ($\omega_1, \omega_2$).
 
-Below is a schematic representation of the system:
+Below is a schematic representation of the system taken from Wikipedia:
 
-```math
-\begin{align*}
-& \text{Pivot} \rightarrow \bigcirc \\
-& \qquad \qquad \ \ | \ \leftarrow l_1 \\
-& \qquad \theta_1 \nearrow \ \ | \\
-& \qquad \quad \ \ \bullet \leftarrow m_1 \\
-& \qquad \quad \ \ / \\
-& \quad \ \ l_2 \rightarrow / \ \ \nwarrow \theta_2 \\
-& \qquad \ \ / \\
-& \qquad \bullet \leftarrow m_2
-\end{align*}
-```
+<img width="294" height="398" alt="image" src="https://github.com/user-attachments/assets/bb1f53d0-1403-4a06-a8cb-1db7ea96ae7c" />
 
-*(Note: GitHub natively supports rendering LaTeX equations via math blocks like the one above, providing a mathematical cartoon of the physical system!)*
 
 ## Project Structure
 
